@@ -1,0 +1,60 @@
+# What a note in the brain looks like. One file, three readers:
+# OkfFormat loads it, OkfValidator enforces it and the describe_format tool shows it to the agent.
+# OKF itself only requires a type. Everything below is a house rule of this brain.
+rules:
+    - "The tool writes the frontmatter: type, title, description, tags, status (always draft) and generated (who and when). Only a person marks a note as verified."
+    - "The path is the folder of the type, then the file name in lowercase words joined by hyphens, then .md. The names index.md and log.md are reserved."
+    - "The description is one sentence on one line. Give one to four lowercase tags."
+    - "The body starts with a first level heading that repeats the title exactly, followed by the sections of the type."
+    - "Link related notes with a path from the brain root, for example [MCP](/topics/mcp.md). Link only to notes that list_notes showed you."
+    - "If the material comes from a web page, pass its full URL as a source and cite it in the body as [^s1], [^s2] in the order you passed them."
+
+types:
+    Topic:
+        folder: topics
+        sections: []
+        example: |
+            # RAG basics
+
+            Three moves: retrieve candidates, augment the prompt with them, generate the answer.
+
+            * A reranker sorts the candidates by real relevance.
+    Decision:
+        folder: decisions
+        sections: [Context, Decision, Consequences]
+        example: |
+            # Protect the MCP server with an external OAuth server
+
+            ## Context
+
+            The brain gets an MCP server and needs a login.
+
+            ## Decision
+
+            The MCP server validates tokens from an external OAuth server and runs no login of its own.
+
+            ## Consequences
+
+            * Token lifetime and revocation stay in one place.
+    Person:
+        folder: people
+        sections: [Role]
+        example: |
+            # Ada Example
+
+            ## Role
+
+            Maintains the OAuth server that issues the tokens.
+    Project:
+        folder: projects
+        sections: [Goal, Status]
+        example: |
+            # Symfony AI hackathon
+
+            ## Goal
+
+            Build something with Symfony AI and send feedback on the beta back.
+
+            ## Status
+
+            Runs until 22 November 2026.

@@ -1,0 +1,18 @@
+ai:
+    platform:
+        cohere:
+            api_key: '%env(COHERE_API_KEY)%'
+
+    agent:
+        capturer:
+            platform: 'ai.platform.cohere'
+            model: 'command-a-03-2025'
+            max_tool_calls: 10
+            prompt:
+                file: '%kernel.project_dir%/config/ai/capturer.md'
+            tools:
+                - 'App\Ai\ListNotes'
+                - 'App\Ai\ReadNote'
+                - 'App\Ai\SaveToInbox'
+                - 'App\Ai\DescribeFormat'
+                - 'App\Ai\SaveToBrain'

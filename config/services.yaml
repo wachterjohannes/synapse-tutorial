@@ -1,0 +1,13 @@
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+
+    App\Brain\Vault:
+        arguments:
+            $root: '%kernel.project_dir%/notes'

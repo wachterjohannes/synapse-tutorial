@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Smoke test of the checked out step. Without COHERE_API_KEY it only checks the wiring,
+# with a key the agents answer for real. Run it after "composer install".
+# The notes are copied first and put back at the end. If a run is killed hard, var/smoke-notes stays and the next run refuses to start.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+
+FAILED=0
+ok()    { echo "  ok    $1"; }
+fail()  { echo "  FAIL  $1"; FAILED=1; }
+check() { if eval "$2" >/dev/null 2>&1; then ok "$1"; else fail "$1"; fi; }
+
+[ -f .env.local ] && set -a && . ./.env.local && set +a
+LIVE=0; [ -n "${COHERE_API_KEY:-}" ] && LIVE=1
+echo "== $(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo step)"
+[ $LIVE = 1 ] && echo "  live: COHERE_API_KEY is set, the agents answer for real" || echo "  wiring only: COHERE_API_KEY is empty"
+
+mkdir -p var
+# A backup left by an aborted run holds the real notes. Never overwrite it.
+if [ -e var/smoke-notes ]; then
+    echo "var/smoke-notes exists: a previous run was aborted. Compare it with notes/, move your notes back, delete var/smoke-notes and run again." >&2
+    exit 1
+fi
+cp -a notes var/smoke-notes || { echo "could not back up notes/" >&2; exit 1; }
+PIDS=""
+cleanup() {
+    [ -n "$PIDS" ] && kill $PIDS 2>/dev/null
+    rm -rf notes && mv var/smoke-notes notes
+}
+trap cleanup EXIT
+
+check "the container compiles" "php bin/console cache:clear"
+check "app:capture is registered" "php bin/console list app --raw | grep -q '^app:capture'"
+check "the OKF validator accepts a good note and rejects a bad one" "php tools/okf-check.php"
+
+if [ $LIVE = 1 ]; then
+    BEFORE=$(find notes -type f | LC_ALL=C sort)
+    php bin/console app:capture "Rough idea, unsorted: smoke test note about nothing. Put it in the inbox." </dev/null >/dev/null 2>&1
+    NEW=$(LC_ALL=C comm -13 <(echo "$BEFORE") <(find notes -type f | LC_ALL=C sort))
+    check "app:capture files a note" "[ -n \"\$NEW\" ]"
+fi
+
+if php bin/console list app --raw | grep -q '^app:ask'; then
+    check "app:ask is registered" "true"
+    if [ $LIVE = 1 ]; then
+        # start from an empty index: indexing twice would store every passage twice
+        php bin/console ai:store:drop brain --force </dev/null >/dev/null 2>&1
+        php bin/console ai:store:setup brain </dev/null >/dev/null 2>&1
+        check "the brain indexes" "php bin/console ai:store:index brain </dev/null"
+        OUT=$(php bin/console app:ask "What breaks when I upgrade to Symfony AI 1.0 beta?" </dev/null 2>&1)
+        check "app:ask answers from the notes and names the source" "echo \"\$OUT\" | grep -q 'symfony-ai-1-0-beta1.md'"
+    fi
+fi
+
+# serve NAME PORT: starts the app on a port. The variables go through the environment, which php -S
+# only passes on when variables_order contains E.
+serve() {
+    php -d variables_order=EGPCS -S 127.0.0.1:$2 -t public public/index.php >/dev/null 2>&1 &
+    PIDS="$PIDS $!"
+}
+# token CLIENT RESOURCE: asks the fake authorization server for a token that is meant for RESOURCE
+token() {
+    curl -s -X POST http://127.0.0.1:$AS_PORT/token -d client_id=$1 -d client_secret=$1-secret -d resource=$2 | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p'
+}
+# mcp URL TOKEN PAYLOAD: one JSON-RPC call inside a fresh MCP session
+mcp() {
+    local H=(-H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream')
+    local init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}'
+    local session
+    session=$(curl -si -X POST "$1" -H "Authorization: Bearer $2" "${H[@]}" -d "$init" | tr -d '\r' | sed -n 's/^[Mm]cp-[Ss]ession-[Ii]d: //p')
+    curl -s -o /dev/null -X POST "$1" -H "Authorization: Bearer $2" -H "Mcp-Session-Id: $session" "${H[@]}" -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+    curl -s -X POST "$1" -H "Authorization: Bearer $2" -H "Mcp-Session-Id: $session" "${H[@]}" -d "$3"
+}
+
+if php bin/console debug:router --raw 2>/dev/null | grep -q '/mcp'; then
+    check "the MCP route exists" "true"
+    PORT=${BRAIN_PORT:-38591}; AS_PORT=${AS_PORT:-38592}
+    MCP=http://127.0.0.1:$PORT/mcp
+    export OAUTH_INTROSPECTION_URL=http://127.0.0.1:$AS_PORT/introspect OAUTH_AUDIENCE=$MCP OAUTH_ISSUER=http://127.0.0.1:$AS_PORT
+    php -S 127.0.0.1:$AS_PORT tools/fake-as.php >/dev/null 2>&1 &
+    PIDS="$PIDS $!"
+    APP_CACHE_DIR=$PWD/var/cache-smoke serve brain $PORT
+    sleep 2
+    CHALLENGE=$(curl -si -X POST $MCP -H 'Content-Type: application/json' -d '{}' | tr -d '\r')
+    check "MCP without a token is 401" "echo \"\$CHALLENGE\" | head -1 | grep -q ' 401'"
+    check "the 401 points to the protected resource metadata" "echo \"\$CHALLENGE\" | grep -qi '^www-authenticate: Bearer resource_metadata=.*oauth-protected-resource'"
+    check "the metadata names the authorization server" "curl -s http://127.0.0.1:$PORT/.well-known/oauth-protected-resource | grep -q authorization_servers"
+    READER=$(token reader $MCP); ADMIN=$(token admin $MCP)
+    INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}'
+    check "MCP initialize works with a valid token" "mcp $MCP $READER '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}' | grep -q search_notes"
+    OTHER=$(token reader http://127.0.0.1:1/other-brain/mcp)
+    check "a token that was issued for another brain is rejected" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST $MCP -H \"Authorization: Bearer $OTHER\" -H 'Content-Type: application/json' -d '$INIT')\" = 401 ]"
+    if grep -q denyUnlessWriter src/Mcp/BrainTools.php; then
+        WRITE='{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"save_to_inbox","arguments":{"slug":"smoke-'$$'","text":"hello"}}}'
+        check "a reader may not write" "mcp $MCP $READER '$WRITE' | grep -q 'may only read'"
+        check "an admin may write" "mcp $MCP $ADMIN '$WRITE' | grep -q 'Saved inbox'"
+    fi
+
+    if php bin/console list app --raw | grep -q '^app:federate'; then
+        check "app:federate is registered" "true"
+        if [ $LIVE = 1 ]; then
+            # a second brain with its own notes, its own index and its own audience
+            FRIEND_PORT=${FRIEND_PORT:-38512}
+            FRIEND=http://127.0.0.1:$FRIEND_PORT/mcp
+            export BRAIN_DIR=$PWD/examples/friend-notes BRAIN_DB=$PWD/var/friend.sqlite
+            rm -f "$BRAIN_DB"
+            php bin/console ai:store:setup brain </dev/null >/dev/null 2>&1
+            php bin/console ai:store:index brain </dev/null >/dev/null 2>&1
+            OAUTH_AUDIENCE=$FRIEND APP_CACHE_DIR=$PWD/var/cache-friend serve friend $FRIEND_PORT
+            unset BRAIN_DIR BRAIN_DB
+            sleep 2
+            OUT=$(FRIEND_BRAIN_URL=$FRIEND FRIEND_BRAIN_TOKEN=$(token reader $FRIEND) php bin/console app:federate "How do I protect an MCP server?" </dev/null 2>&1)
+            check "app:federate ranks passages of both brains" "echo \"\$OUT\" | grep -q 'friend:' && echo \"\$OUT\" | grep -q 'mine:'"
+            OUT=$(FRIEND_BRAIN_URL=$FRIEND FRIEND_BRAIN_TOKEN=$(token reader $MCP) php bin/console app:federate "How do I protect an MCP server?" </dev/null 2>&1)
+            check "a token for another brain is refused, the own passages still come back" "echo \"\$OUT\" | grep -q 'Could not ask' && echo \"\$OUT\" | grep -q 'mine:'"
+        fi
+    fi
+fi
+exit $FAILED
