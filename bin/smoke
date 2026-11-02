@@ -9,6 +9,17 @@ FAILED=0
 ok()    { echo "  ok    $1"; }
 fail()  { echo "  FAIL  $1"; FAILED=1; }
 check() { if eval "$2" >/dev/null 2>&1; then ok "$1"; else fail "$1"; fi; }
+# An answer comes from a model over the network. A request stalls now and then, and a model words things
+# differently each time. live runs a command up to three times, until its output matches the pattern.
+# The output of the last try stays in OUT.
+live() {
+    local pattern=$1 try; shift
+    for try in 1 2 3; do
+        OUT=$("$@" </dev/null 2>&1)
+        echo "$OUT" | grep -q -- "$pattern" && return 0
+    done
+    return 1
+}
 
 [ -f .env.local ] && set -a && . ./.env.local && set +a
 LIVE=0; [ -n "${COHERE_API_KEY:-}" ] && LIVE=1
@@ -35,8 +46,11 @@ check "the OKF validator accepts a good note and rejects a bad one" "php tools/o
 
 if [ $LIVE = 1 ]; then
     BEFORE=$(find notes -type f | LC_ALL=C sort)
-    php bin/console app:capture "Rough idea, unsorted: smoke test note about nothing. Put it in the inbox." </dev/null >/dev/null 2>&1
-    NEW=$(LC_ALL=C comm -13 <(echo "$BEFORE") <(find notes -type f | LC_ALL=C sort))
+    for TRY in 1 2 3; do
+        php bin/console app:capture "Rough idea, unsorted: smoke test note about nothing. Put it in the inbox." </dev/null >/dev/null 2>&1
+        NEW=$(LC_ALL=C comm -13 <(echo "$BEFORE") <(find notes -type f | LC_ALL=C sort))
+        [ -n "$NEW" ] && break
+    done
     check "app:capture files a note" "[ -n \"\$NEW\" ]"
 fi
 
@@ -47,7 +61,7 @@ if php bin/console list app --raw | grep -q '^app:ask'; then
         php bin/console ai:store:drop brain --force </dev/null >/dev/null 2>&1
         php bin/console ai:store:setup brain </dev/null >/dev/null 2>&1
         check "the brain indexes" "php bin/console ai:store:index brain </dev/null"
-        OUT=$(php bin/console app:ask "What breaks when I upgrade to Symfony AI 1.0 beta?" </dev/null 2>&1)
+        live 'symfony-ai-1-0-beta1.md' php bin/console app:ask "What breaks when I upgrade to Symfony AI 1.0 beta?"
         check "app:ask answers from the notes and names the source" "echo \"\$OUT\" | grep -q 'symfony-ai-1-0-beta1.md'"
     fi
 fi

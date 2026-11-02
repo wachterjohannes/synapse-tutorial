@@ -78,19 +78,6 @@
             "AGENTS.md"
         ]
     },
-    "symfony/mcp-bundle": {
-        "version": "1.0",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "main",
-            "version": "0.13",
-            "ref": "6fbd19b68290f2d5decdb926636484950d185e4b"
-        },
-        "files": [
-            "config/packages/mcp.yaml",
-            "config/routes/mcp.yaml"
-        ]
-    },
     "symfony/property-info": {
         "version": "8.1",
         "recipe": {
@@ -114,19 +101,6 @@
         "files": [
             "config/packages/routing.yaml",
             "config/routes.yaml"
-        ]
-    },
-    "symfony/security-bundle": {
-        "version": "8.1",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "main",
-            "version": "7.4",
-            "ref": "02d47835088cd548c827e5d53b3c4b361bca3390"
-        },
-        "files": [
-            "config/packages/security.yaml",
-            "config/routes/security.yaml"
         ]
     },
     "symfony/uid": {
