@@ -3,6 +3,30 @@ ai:
         cohere:
             api_key: '%env(COHERE_API_KEY)%'
 
+    vectorizer:
+        cohere:
+            platform: 'ai.platform.cohere'
+            model: 'embed-english-v3.0'
+
+    store:
+        sqlite:
+            brain:
+                dsn: 'sqlite:%kernel.project_dir%/var/brain.sqlite'
+
+    indexer:
+        brain:
+            loader: 'App\Brain\NoteLoader'
+            source: '%kernel.project_dir%/notes/brain'
+            transformers:
+                - 'Symfony\AI\Store\Document\Transformer\TextSplitTransformer'
+            vectorizer: 'ai.vectorizer.cohere'
+            store: 'ai.store.sqlite.brain'
+
+    retriever:
+        brain:
+            vectorizer: 'App\Brain\QueryVectorizer'
+            store: 'ai.store.sqlite.brain'
+
     agent:
         capturer:
             platform: 'ai.platform.cohere'
@@ -16,3 +40,13 @@ ai:
                 - 'App\Ai\SaveToInbox'
                 - 'App\Ai\DescribeFormat'
                 - 'App\Ai\SaveToBrain'
+
+        reader:
+            platform: 'ai.platform.cohere'
+            model: 'command-a-03-2025'
+            max_tool_calls: 6
+            prompt:
+                file: '%kernel.project_dir%/config/ai/reader.md'
+            tools:
+                - 'App\Ai\SearchNotes'
+                - 'App\Ai\ReadNote'

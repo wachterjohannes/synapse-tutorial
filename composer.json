@@ -10,12 +10,17 @@
         "symfony/ai-agent": "^1.0@beta",
         "symfony/ai-bundle": "^1.0@beta",
         "symfony/ai-cohere-platform": "^1.0@beta",
+        "symfony/ai-sqlite-store": "^1.0@beta",
+        "symfony/ai-store": "^1.0@beta",
         "symfony/console": "8.1.*",
         "symfony/dotenv": "8.1.*",
+        "symfony/filesystem": "8.1.*",
+        "symfony/finder": "8.1.*",
         "symfony/flex": "^2",
         "symfony/framework-bundle": "8.1.*",
         "symfony/http-client": "8.1.*",
         "symfony/runtime": "8.1.*",
+        "symfony/string": "8.1.*",
         "symfony/yaml": "8.1.*"
     },
     "config": {

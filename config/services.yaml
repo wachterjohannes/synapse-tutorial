@@ -11,3 +11,9 @@ services:
     App\Brain\Vault:
         arguments:
             $root: '%kernel.project_dir%/notes'
+
+    Symfony\AI\Store\Document\Transformer\TextSplitTransformer: ~
+
+    App\Brain\QueryVectorizer:
+        arguments:
+            $inner: '@ai.vectorizer.cohere'
