@@ -7,6 +7,7 @@
         "php": ">=8.4",
         "ext-ctype": "*",
         "ext-iconv": "*",
+        "nyholm/psr7": "^1.8",
         "symfony/ai-agent": "^1.0@beta",
         "symfony/ai-bundle": "^1.0@beta",
         "symfony/ai-cohere-platform": "^1.0@beta",
@@ -19,7 +20,9 @@
         "symfony/flex": "^2",
         "symfony/framework-bundle": "8.1.*",
         "symfony/http-client": "8.1.*",
+        "symfony/mcp-bundle": "^1.0@beta",
         "symfony/runtime": "8.1.*",
+        "symfony/security-bundle": "8.1.*",
         "symfony/string": "8.1.*",
         "symfony/yaml": "8.1.*"
     },

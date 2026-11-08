@@ -1,0 +1,20 @@
+security:
+    providers:
+        brain_users:
+            memory: ~
+
+    firewalls:
+        dev:
+            pattern: ^/(_profiler(/|$)|(_wdt|assets|build)/)
+            security: false
+        mcp:
+            pattern: ^/mcp
+            stateless: true
+            provider: brain_users
+            entry_point: App\Security\BearerChallenge
+            access_token:
+                token_handler: App\Security\IntrospectionTokenHandler
+                failure_handler: App\Security\BearerChallenge
+
+    access_control:
+        - { path: ^/mcp, roles: ROLE_BRAIN_READ }

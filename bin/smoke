@@ -98,13 +98,18 @@ if php bin/console debug:router --raw 2>/dev/null | grep -q '/mcp'; then
     CHALLENGE=$(curl -si -X POST $MCP -H 'Content-Type: application/json' -d '{}' | tr -d '\r')
     check "MCP without a token is 401" "echo \"\$CHALLENGE\" | head -1 | grep -q ' 401'"
     check "the 401 points to the protected resource metadata" "echo \"\$CHALLENGE\" | grep -qi '^www-authenticate: Bearer resource_metadata=.*oauth-protected-resource'"
+    OTHERHOST=$(curl -si -X POST http://localhost:$PORT/mcp -H 'Content-Type: application/json' -d '{}' | tr -d '\r')
+    check "the 401 names the configured address, whatever host the request came through" "echo \"\$OTHERHOST\" | grep -qi '^www-authenticate: Bearer resource_metadata=\"http://127.0.0.1:$PORT/.well-known/oauth-protected-resource\"'"
+    SLASHES=$(curl -s http://127.0.0.1:$PORT/.well-known/oauth-protected-resource)
+    check "the metadata keeps its slashes" "echo \"\$SLASHES\" | grep -q '\"resource\":\"http://127.0.0.1:$PORT/mcp\"'"
     check "the metadata names the authorization server" "curl -s http://127.0.0.1:$PORT/.well-known/oauth-protected-resource | grep -q authorization_servers"
     READER=$(token reader $MCP); ADMIN=$(token admin $MCP)
     INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}'
     check "MCP initialize works with a valid token" "mcp $MCP $READER '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}' | grep -q search_notes"
     OTHER=$(token reader http://127.0.0.1:1/other-brain/mcp)
     check "a token that was issued for another brain is rejected" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST $MCP -H \"Authorization: Bearer $OTHER\" -H 'Content-Type: application/json' -d '$INIT')\" = 401 ]"
-    if grep -q denyUnlessWriter src/Mcp/BrainTools.php; then
+    # keyed on the role setup, not on the guard: a removed guard must turn the checks red, not skip them
+    if grep -q role_hierarchy config/packages/security.yaml; then
         WRITE='{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"save_to_inbox","arguments":{"slug":"smoke-'$$'","text":"hello"}}}'
         check "a reader may not write" "mcp $MCP $READER '$WRITE' | grep -q 'may only read'"
         check "an admin may write" "mcp $MCP $ADMIN '$WRITE' | grep -q 'Saved inbox'"
