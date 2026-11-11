@@ -1,4 +1,7 @@
 security:
+    role_hierarchy:
+        ROLE_BRAIN_WRITE: [ROLE_BRAIN_READ]
+
     providers:
         brain_users:
             memory: ~

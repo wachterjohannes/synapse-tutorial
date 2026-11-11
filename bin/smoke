@@ -113,6 +113,8 @@ if php bin/console debug:router --raw 2>/dev/null | grep -q '/mcp'; then
         WRITE='{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"save_to_inbox","arguments":{"slug":"smoke-'$$'","text":"hello"}}}'
         check "a reader may not write" "mcp $MCP $READER '$WRITE' | grep -q 'may only read'"
         check "an admin may write" "mcp $MCP $ADMIN '$WRITE' | grep -q 'Saved inbox'"
+        BRAIN='{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"save_to_brain","arguments":{"path":"topics/smoke.md","type":"Topic","title":"Smoke","description":"x","tags":["x"],"body":"# Smoke"}}}'
+        check "a reader may not write to the brain either" "mcp $MCP $READER '$BRAIN' | grep -q 'may only read'"
     fi
 
     if php bin/console list app --raw | grep -q '^app:federate'; then

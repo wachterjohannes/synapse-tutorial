@@ -9,6 +9,8 @@ use App\Ai\SaveToBrain;
 use App\Ai\SaveToInbox;
 use App\Ai\SearchNotes;
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Exception\ToolCallException;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 
 /**
  * The brain as an MCP server. The tools are the same objects the agents use,
@@ -23,6 +25,7 @@ final class BrainTools
         private readonly SaveToInbox $saveToInbox,
         private readonly SaveToBrain $saveToBrain,
         private readonly DescribeFormat $describeFormat,
+        private readonly AuthorizationCheckerInterface $authorizationChecker,
     ) {
     }
 
@@ -66,6 +69,8 @@ final class BrainTools
     #[McpTool(name: 'save_to_inbox')]
     public function saveToInbox(string $slug, string $text): string
     {
+        $this->denyUnlessWriter();
+
         return ($this->saveToInbox)($slug, $text);
     }
 
@@ -94,6 +99,18 @@ final class BrainTools
     #[McpTool(name: 'save_to_brain')]
     public function saveToBrain(string $path, string $type, string $title, string $description, array $tags, string $body, array $sources = []): string
     {
+        $this->denyUnlessWriter();
+
         return ($this->saveToBrain)($path, $type, $title, $description, $tags, $body, $sources);
+    }
+
+    /**
+     * Reading is open to every token with brain:read or brain:write. Writing needs the brain:write scope, which becomes ROLE_BRAIN_WRITE.
+     */
+    private function denyUnlessWriter(): void
+    {
+        if (!$this->authorizationChecker->isGranted('ROLE_BRAIN_WRITE')) {
+            throw new ToolCallException('This token may only read. Writing needs the brain:write scope.');
+        }
     }
 }
