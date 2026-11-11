@@ -9,8 +9,9 @@ The code lives in branches. Each branch builds on the previous one and holds the
 | [`01-write-agent`](../../tree/01-write-agent) | A capture agent that files raw material in the inbox and writes finished notes into the brain | - |
 | [`02-read-agent`](../../tree/02-read-agent) | A read agent that answers from the brain, with RAG in the background | [`01-write-agent...02-read-agent`](../../compare/01-write-agent...02-read-agent) |
 | [`03-mcp-server`](../../tree/03-mcp-server) | The brain as an MCP server, protected by an external authorization server | [`02-read-agent...03-mcp-server`](../../compare/02-read-agent...03-mcp-server) |
+| [`04-roles`](../../tree/04-roles) | Two roles: admin may write, reader may only query | [`03-mcp-server...04-roles`](../../compare/03-mcp-server...04-roles) |
 
-`git diff origin/02-read-agent origin/03-mcp-server` shows what a step changes.
+`git diff origin/03-mcp-server origin/04-roles` shows what a step changes.
 
 ## Requirements
 
@@ -34,10 +35,6 @@ The agent writes to `notes/`. `notes/inbox/` holds raw material, `notes/brain/` 
 ## The index
 
 From step 02 the notes are searched through an index in `var/brain.sqlite`. It is not updated when a note is written. Run `php bin/console ai:store:clear brain --force` before `php bin/console ai:store:index brain`, because indexing twice stores every passage twice. The live run of `bin/smoke` drops and rebuilds this index.
-
-## Who may write in step 03
-
-Step 03 checks that a token is valid, for this server and not for another one, but every valid token may use the write tools. Roles arrive in step 04.
 
 ## Check a branch
 
