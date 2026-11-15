@@ -10,8 +10,9 @@ The code lives in branches. Each branch builds on the previous one and holds the
 | [`02-read-agent`](../../tree/02-read-agent) | A read agent that answers from the brain, with RAG in the background | [`01-write-agent...02-read-agent`](../../compare/01-write-agent...02-read-agent) |
 | [`03-mcp-server`](../../tree/03-mcp-server) | The brain as an MCP server, protected by an external authorization server | [`02-read-agent...03-mcp-server`](../../compare/02-read-agent...03-mcp-server) |
 | [`04-roles`](../../tree/04-roles) | Two roles: admin may write, reader may only query | [`03-mcp-server...04-roles`](../../compare/03-mcp-server...04-roles) |
+| [`05-tool-guards`](../../tree/05-tool-guards) | Tool permissions by default: a tool is closed to readers unless it says it is read-only, and a test walks every tool | [`04-roles...05-tool-guards`](../../compare/04-roles...05-tool-guards) |
 
-`git diff origin/03-mcp-server origin/04-roles` shows what a step changes.
+`git diff origin/04-roles origin/05-tool-guards` shows what a step changes.
 
 ## Requirements
 
