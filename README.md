@@ -11,8 +11,9 @@ The code lives in branches. Each branch builds on the previous one and holds the
 | [`03-mcp-server`](../../tree/03-mcp-server) | The brain as an MCP server, protected by an external authorization server | [`02-read-agent...03-mcp-server`](../../compare/02-read-agent...03-mcp-server) |
 | [`04-roles`](../../tree/04-roles) | Two roles: admin may write, reader may only query | [`03-mcp-server...04-roles`](../../compare/03-mcp-server...04-roles) |
 | [`05-tool-guards`](../../tree/05-tool-guards) | Tool permissions by default: a tool is closed to readers unless it says it is read-only, and a test walks every tool | [`04-roles...05-tool-guards`](../../compare/04-roles...05-tool-guards) |
+| [`06-mcp-client`](../../tree/06-mcp-client) | Ask another brain over MCP and rank both answers together with a reranker | [`05-tool-guards...06-mcp-client`](../../compare/05-tool-guards...06-mcp-client) |
 
-`git diff origin/04-roles origin/05-tool-guards` shows what a step changes.
+`git diff origin/05-tool-guards origin/06-mcp-client` shows what a step changes.
 
 ## Requirements
 
